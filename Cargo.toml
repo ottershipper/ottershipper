@@ -1,0 +1,48 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/server",
+    "crates/mcp",
+    "crates/core",
+    "crates/db",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+authors = ["Chang Feng"]
+
+[workspace.dependencies]
+# Async runtime
+tokio = { version = "1.41", features = ["full"] }
+
+# MCP Protocol
+rmcp = { version = "0.2", features = ["server"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Database
+sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite"] }
+
+# Docker API
+bollard = "0.17"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Time
+chrono = "0.4"
+
+# HTTP client (for health checks, DNS checks)
+reqwest = { version = "0.12", features = ["json"] }
+
+# UUID
+uuid = { version = "1.11", features = ["v4", "serde"] }

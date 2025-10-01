@@ -1,0 +1,17 @@
+[package]
+name = "ottershipper-db"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+# Workspace dependencies
+tokio.workspace = true
+sqlx.workspace = true
+serde.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+chrono.workspace = true
+uuid.workspace = true

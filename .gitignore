@@ -1,0 +1,26 @@
+# Rust
+/target
+**/*.rs.bk
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+
+# Environment
+.env
+.env.local
+
+# Logs
+*.log
