@@ -13,6 +13,18 @@ edition = "2021"
 license = "MIT"
 authors = ["Chang Feng"]
 
+[workspace.lints.rust]
+unsafe_code = "forbid"
+unused_must_use = "deny"
+
+[workspace.lints.clippy]
+all = "warn"
+pedantic = "warn"
+# Allow some pedantic lints that are too noisy
+module_name_repetitions = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+
 [workspace.dependencies]
 # Async runtime
 tokio = { version = "1.41", features = ["full"] }
