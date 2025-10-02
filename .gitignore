@@ -27,3 +27,5 @@ Thumbs.db
 
 # Logs
 *.log
+ottershipper.toml
+test-ottershipper.db*
