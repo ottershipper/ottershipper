@@ -8,7 +8,7 @@ pub struct ApplicationRepository<'a> {
 }
 
 impl<'a> ApplicationRepository<'a> {
-    /// Create a new ApplicationRepository
+    /// Create a new `ApplicationRepository`
     pub(crate) fn new(db: &'a Database) -> Self {
         Self { db }
     }

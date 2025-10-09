@@ -23,9 +23,29 @@ if ! docker ps &> /dev/null; then
     exit 1
 fi
 
+cd "$PROJECT_ROOT"
+
+# Run clippy
+echo "==> Running clippy..."
+if ! cargo clippy --all-targets --all-features -- -D warnings; then
+    echo "Error: Clippy check failed"
+    exit 1
+fi
+echo "✓ Clippy passed"
+echo ""
+
+# Check formatting
+echo "==> Checking code formatting..."
+if ! cargo fmt --all -- --check; then
+    echo "Error: Code formatting check failed"
+    echo "Run 'cargo fmt --all' to fix formatting"
+    exit 1
+fi
+echo "✓ Formatting check passed"
+echo ""
+
 # Build for Linux
 echo "==> Building binary for Linux x86_64..."
-cd "$PROJECT_ROOT"
 cross build --release --target x86_64-unknown-linux-musl
 
 if [ ! -f "target/x86_64-unknown-linux-musl/release/ottershipper" ]; then

@@ -67,7 +67,9 @@ async fn test_mcp_create_app_e2e() -> Result<(), Box<dyn std::error::Error>> {
     // Verify response indicates success
     assert!(!result.content.is_empty());
     let response_text = result.content[0].as_text().unwrap();
-    assert!(response_text.text.contains("Successfully created application"));
+    assert!(response_text
+        .text
+        .contains("Successfully created application"));
     assert!(response_text.text.contains("test-app"));
 
     // Verify app exists in database

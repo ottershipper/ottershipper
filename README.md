@@ -1,5 +1,7 @@
 # OtterShipper
 
+[![Test](https://github.com/ottershipper/ottershipper/actions/workflows/test.yml/badge.svg)](https://github.com/ottershipper/ottershipper/actions/workflows/test.yml)
+
 AI-first deployment platform controlled via Claude Code through MCP protocol.
 
 ## Installation

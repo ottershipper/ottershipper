@@ -15,7 +15,7 @@ use tracing::info;
 pub struct DatabaseConfig {
     /// Maximum number of connections in the pool
     pub max_connections: u32,
-    /// Enable SQLite write-ahead logging for better concurrency
+    /// Enable `SQLite` write-ahead logging for better concurrency
     pub enable_wal: bool,
 }
 
@@ -114,6 +114,7 @@ impl Database {
     }
 
     /// Get repository for application operations
+    #[must_use]
     pub fn applications(&self) -> ApplicationRepository<'_> {
         ApplicationRepository::new(self)
     }

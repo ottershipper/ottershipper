@@ -1,5 +1,8 @@
 use anyhow::Result;
 use ottershipper_server::Config;
+use rmcp::transport::sse_server::SseServer;
+use rmcp::transport::stdio;
+use rmcp::ServiceExt;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -49,10 +52,8 @@ async fn main() -> Result<()> {
             );
 
             // Run HTTP server with SSE transport
-            use rmcp::transport::sse_server::SseServer;
-            use rmcp::ServiceExt;
-
-            let bind_addr = format!("{}:{}", config.server.bind_address, config.server.port).parse()?;
+            let bind_addr =
+                format!("{}:{}", config.server.bind_address, config.server.port).parse()?;
             let mut sse_server = SseServer::serve(bind_addr).await?;
 
             // Process incoming SSE transports
@@ -74,15 +75,16 @@ async fn main() -> Result<()> {
         }
         "stdio" => {
             tracing::info!("MCP server initialized successfully");
-            tracing::info!("OtterShipper ready to accept MCP requests via stdio (for local Claude Code)");
+            tracing::info!(
+                "OtterShipper ready to accept MCP requests via stdio (for local Claude Code)"
+            );
 
             // Run the MCP server (stdio transport for local Claude Code)
-            use rmcp::{transport::stdio, ServiceExt};
             let service = mcp_server.serve(stdio()).await?;
             service.waiting().await?;
         }
         other => {
-            anyhow::bail!("Invalid transport type: {}. Must be 'stdio' or 'http'", other);
+            anyhow::bail!("Invalid transport type: {other}. Must be 'stdio' or 'http'");
         }
     }
 

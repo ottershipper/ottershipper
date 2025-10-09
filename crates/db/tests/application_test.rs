@@ -205,7 +205,7 @@ async fn test_concurrent_creates() -> Result<(), Box<dyn std::error::Error>> {
     let handles: Vec<_> = (0..10)
         .map(|i| {
             let db_clone = db.clone();
-            tokio::spawn(async move { db_clone.applications().create(&format!("app-{}", i)).await })
+            tokio::spawn(async move { db_clone.applications().create(&format!("app-{i}")).await })
         })
         .collect();
 

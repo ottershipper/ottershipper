@@ -1,13 +1,16 @@
 use super::schemas::CreateAppInput;
 use ottershipper_core::ApplicationService;
 use rmcp::handler::server::{router::tool::ToolRouter, tool::Parameters, ServerHandler};
-use rmcp::model::{CallToolResult, Content, ErrorCode, ErrorData as McpError, Implementation, InitializeResult, ProtocolVersion, ServerCapabilities};
+use rmcp::model::{
+    CallToolResult, Content, ErrorCode, ErrorData as McpError, Implementation, InitializeResult,
+    ProtocolVersion, ServerCapabilities,
+};
 use rmcp::{tool, tool_handler, tool_router};
 use serde_json::json;
 use std::{borrow::Cow, future::Future};
 use tracing::info;
 
-/// MCP Server for OtterShipper
+/// MCP Server for `OtterShipper`
 #[derive(Clone)]
 pub struct McpServer {
     service: ApplicationService,
@@ -17,6 +20,7 @@ pub struct McpServer {
 #[tool_router]
 impl McpServer {
     /// Create a new MCP server with the given application service
+    #[must_use]
     pub fn new(service: ApplicationService) -> Self {
         Self {
             service,
@@ -25,7 +29,9 @@ impl McpServer {
     }
 
     /// Create a new application
-    #[tool(description = "Create a new application in OtterShipper. Returns the application ID, name, and creation timestamp.")]
+    #[tool(
+        description = "Create a new application in OtterShipper. Returns the application ID, name, and creation timestamp."
+    )]
     async fn otter_create_app(
         &self,
         Parameters(input): Parameters<CreateAppInput>,
@@ -50,14 +56,16 @@ impl McpServer {
             }
             Err(e) => Err(McpError {
                 code: ErrorCode::INTERNAL_ERROR,
-                message: Cow::from(format!("Failed to create application: {}", e)),
+                message: Cow::from(format!("Failed to create application: {e}")),
                 data: None,
             }),
         }
     }
 
     /// List all applications
-    #[tool(description = "List all applications in OtterShipper. Returns an array of applications with their IDs, names, and creation timestamps.")]
+    #[tool(
+        description = "List all applications in OtterShipper. Returns an array of applications with their IDs, names, and creation timestamps."
+    )]
     async fn otter_list_apps(&self) -> Result<CallToolResult, McpError> {
         info!("Listing all applications");
 
@@ -81,7 +89,7 @@ impl McpServer {
             }
             Err(e) => Err(McpError {
                 code: ErrorCode::INTERNAL_ERROR,
-                message: Cow::from(format!("Failed to list applications: {}", e)),
+                message: Cow::from(format!("Failed to list applications: {e}")),
                 data: None,
             }),
         }

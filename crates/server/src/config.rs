@@ -2,8 +2,8 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
-/// OtterShipper server configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// `OtterShipper` server configuration
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Config {
     /// Server configuration
     #[serde(default)]
@@ -33,7 +33,7 @@ pub struct ServerConfig {
 /// Database configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DatabaseConfig {
-    /// Path to SQLite database file
+    /// Path to `SQLite` database file
     #[serde(default = "default_database_path")]
     pub path: PathBuf,
 }
@@ -55,15 +55,6 @@ fn default_database_path() -> PathBuf {
         PathBuf::from("./ottershipper.db")
     } else {
         PathBuf::from("/var/lib/ottershipper/ottershipper.db")
-    }
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            server: ServerConfig::default(),
-            database: DatabaseConfig::default(),
-        }
     }
 }
 
@@ -91,7 +82,10 @@ impl Config {
         let path = path.as_ref();
 
         if !path.exists() {
-            tracing::info!("Config file not found at {}, using defaults", path.display());
+            tracing::info!(
+                "Config file not found at {}, using defaults",
+                path.display()
+            );
             return Ok(Self::default());
         }
 
@@ -126,6 +120,7 @@ impl Config {
     }
 
     /// Generate example configuration file
+    #[must_use]
     pub fn example() -> String {
         let example = Config::default();
         toml::to_string_pretty(&example).expect("Failed to serialize example config")

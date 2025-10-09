@@ -11,7 +11,8 @@ pub struct ApplicationService {
 }
 
 impl ApplicationService {
-    /// Create a new ApplicationService
+    /// Create a new `ApplicationService`
+    #[must_use]
     pub fn new(db: Database) -> Self {
         Self { db }
     }
