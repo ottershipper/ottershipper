@@ -49,8 +49,39 @@ impl McpServer {
                 )]))
             }
             Err(e) => Err(McpError {
-                code: ErrorCode(-32000),
+                code: ErrorCode::INTERNAL_ERROR,
                 message: Cow::from(format!("Failed to create application: {}", e)),
+                data: None,
+            }),
+        }
+    }
+
+    /// List all applications
+    #[tool(description = "List all applications in OtterShipper. Returns an array of applications with their IDs, names, and creation timestamps.")]
+    async fn otter_list_apps(&self) -> Result<CallToolResult, McpError> {
+        info!("Listing all applications");
+
+        match self.service.list_apps().await {
+            Ok(apps) => {
+                let response = json!({
+                    "success": true,
+                    "applications": apps.iter().map(|app| {
+                        json!({
+                            "id": app.id,
+                            "name": app.name,
+                            "created_at": app.created_at
+                        })
+                    }).collect::<Vec<_>>(),
+                    "count": apps.len()
+                });
+
+                Ok(CallToolResult::success(vec![Content::text(
+                    serde_json::to_string_pretty(&response).unwrap(),
+                )]))
+            }
+            Err(e) => Err(McpError {
+                code: ErrorCode::INTERNAL_ERROR,
+                message: Cow::from(format!("Failed to list applications: {}", e)),
                 data: None,
             }),
         }

@@ -80,3 +80,95 @@ async fn test_mcp_create_app_e2e() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+/// Test end-to-end MCP tool call: list applications
+/// This tests the full stack: MCP protocol → service layer → database
+#[tokio::test]
+async fn test_mcp_list_apps_e2e() -> Result<(), Box<dyn std::error::Error>> {
+    let (_db, client, server_handle) = setup_mcp_test().await?;
+
+    // Create test applications via MCP tool (better end-to-end testing)
+    for name in ["app-one", "app-two", "app-three"] {
+        client
+            .call_tool(CallToolRequestParam {
+                name: "otter_create_app".into(),
+                arguments: serde_json::json!({ "name": name }).as_object().cloned(),
+            })
+            .await?;
+    }
+
+    // Call otter_list_apps tool
+    let result = client
+        .call_tool(CallToolRequestParam {
+            name: "otter_list_apps".into(),
+            arguments: None,
+        })
+        .await?;
+
+    // Verify response format
+    assert!(!result.content.is_empty());
+    let response_text = result.content[0].as_text().unwrap();
+    let response: serde_json::Value = serde_json::from_str(&response_text.text)?;
+
+    // Verify success flag
+    assert_eq!(response["success"], true);
+
+    // Verify count
+    assert_eq!(response["count"], 3);
+
+    // Verify all apps are present
+    let apps = response["applications"].as_array().unwrap();
+    assert_eq!(apps.len(), 3);
+
+    // Verify app names
+    let app_names: Vec<String> = apps
+        .iter()
+        .map(|app| app["name"].as_str().unwrap().to_string())
+        .collect();
+    assert!(app_names.contains(&"app-one".to_string()));
+    assert!(app_names.contains(&"app-two".to_string()));
+    assert!(app_names.contains(&"app-three".to_string()));
+
+    // Verify each app has required fields
+    for app in apps {
+        assert!(app["id"].is_string());
+        assert!(app["name"].is_string());
+        assert!(app["created_at"].is_number());
+    }
+
+    client.cancel().await?;
+    server_handle.await??;
+
+    Ok(())
+}
+
+/// Test listing applications when no apps exist
+#[tokio::test]
+async fn test_mcp_list_apps_empty() -> Result<(), Box<dyn std::error::Error>> {
+    let (_db, client, server_handle) = setup_mcp_test().await?;
+
+    // Call otter_list_apps tool on empty database
+    let result = client
+        .call_tool(CallToolRequestParam {
+            name: "otter_list_apps".into(),
+            arguments: None,
+        })
+        .await?;
+
+    // Verify response format
+    assert!(!result.content.is_empty());
+    let response_text = result.content[0].as_text().unwrap();
+    let response: serde_json::Value = serde_json::from_str(&response_text.text)?;
+
+    // Verify success flag
+    assert_eq!(response["success"], true);
+
+    // Verify empty list
+    assert_eq!(response["count"], 0);
+    assert_eq!(response["applications"].as_array().unwrap().len(), 0);
+
+    client.cancel().await?;
+    server_handle.await??;
+
+    Ok(())
+}
