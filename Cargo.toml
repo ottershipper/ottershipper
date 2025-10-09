@@ -39,8 +39,8 @@ toml = "0.8"
 # Database
 sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite"] }
 
-# Docker API
-bollard = "0.17"
+# Docker API (Unix socket only, no TLS needed)
+bollard = { version = "0.17", default-features = false, features = ["chrono"] }
 
 # Error handling
 anyhow = "1.0"
@@ -53,9 +53,11 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # Time
 chrono = "0.4"
 
-# HTTP server and client
+# HTTP server (plain HTTP, no TLS)
 axum = "0.8"
-reqwest = { version = "0.12", features = ["json"] }
+
+# HTTP client (rustls instead of OpenSSL for easier cross-compilation)
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 
 # UUID
 uuid = { version = "1.11", features = ["v4", "serde"] }

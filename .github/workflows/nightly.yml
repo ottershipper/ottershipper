@@ -1,0 +1,81 @@
+name: Nightly Build
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Nightly ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - x86_64-unknown-linux-musl
+          - aarch64-unknown-linux-musl
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}-nightly
+
+      - name: Install cross
+        run: cargo install cross --git https://github.com/cross-rs/cross
+
+      - name: Build binary
+        run: cross build --release --target ${{ matrix.target }}
+        env:
+          CARGO_BUILD_JOBS: 2
+
+      - name: Rename binary
+        run: |
+          if [ "${{ matrix.target }}" = "x86_64-unknown-linux-musl" ]; then
+            cp target/${{ matrix.target }}/release/ottershipper ottershipper-nightly-linux-x86_64
+          elif [ "${{ matrix.target }}" = "aarch64-unknown-linux-musl" ]; then
+            cp target/${{ matrix.target }}/release/ottershipper ottershipper-nightly-linux-aarch64
+          fi
+
+      - name: Generate checksums
+        run: |
+          sha256sum ottershipper-nightly-linux-* > SHA256SUMS-nightly
+          cat SHA256SUMS-nightly
+
+      - name: Upload to nightly release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ottershipper-nightly-linux-*
+          file_glob: true
+          tag: nightly
+          overwrite: true
+          prerelease: true
+          release_name: "Nightly Development Build"
+          body: |
+            **⚠️ Unstable Development Build**
+
+            This is an automated nightly build from the latest `main` branch commit.
+
+            - Commit: ${{ github.sha }}
+            - Built: ${{ github.event.head_commit.timestamp }}
+
+            For stable releases, see: https://github.com/${{ github.repository }}/releases
+
+      - name: Upload checksums to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: SHA256SUMS-nightly
+          tag: nightly
+          overwrite: true

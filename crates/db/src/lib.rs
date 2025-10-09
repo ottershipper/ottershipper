@@ -114,7 +114,7 @@ impl Database {
     }
 
     /// Get repository for application operations
-    pub fn applications(&self) -> ApplicationRepository {
+    pub fn applications(&self) -> ApplicationRepository<'_> {
         ApplicationRepository::new(self)
     }
 }
