@@ -38,9 +38,11 @@ cargo run --bin ottershipper
 cargo test
 
 # Test installation locally (before commit)
-# Requires: cross and Docker
-cargo install cross --git https://github.com/cross-rs/cross
+# Requires: Docker
 ./test/test-install-local.sh
+
+# Show verbose output (all build logs)
+./test/test-install-local.sh --verbose
 ```
 
 ## License

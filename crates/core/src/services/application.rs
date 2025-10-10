@@ -72,7 +72,7 @@ mod tests {
         Ok(ApplicationService::new(db))
     }
 
-    /// Test that ApplicationService correctly integrates with Database layer
+    /// Test that `ApplicationService` correctly integrates with Database layer
     /// This verifies the service layer properly delegates to DB and returns results
     #[tokio::test]
     async fn test_service_integration() -> Result<(), Box<dyn std::error::Error>> {

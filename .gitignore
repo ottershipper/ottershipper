@@ -29,4 +29,3 @@ Thumbs.db
 *.log
 ottershipper.toml
 test-ottershipper.db*
-test-artifacts/

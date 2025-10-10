@@ -2,28 +2,120 @@
 set -e
 
 # OtterShipper Local Installation Test
-# Builds Linux binary locally and tests installation in Docker
+# Builds and tests installation in a real Ubuntu VM using Multipass
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-echo "==> OtterShipper Local Installation Test"
+# VM configuration
+VM_NAME="ottershipper-test-$$"
+VM_CPUS="8"    # Use multiple CPUs for parallel compilation
+VM_MEMORY="8G" # 1GB per CPU for Rust compilation
+VM_DISK="20G"
+
+# Record start time for total duration
+START_TIME=$(date +%s)
+
+echo "==> OtterShipper Local Installation Test (Multipass)"
+echo "    Started at: $(date '+%Y-%m-%d %H:%M:%S')"
 echo ""
 
-# Check if cross is installed
-if ! command -v cross &> /dev/null; then
-    echo "Error: 'cross' is not installed"
-    echo "Install it with: cargo install cross --git https://github.com/cross-rs/cross"
+# Check if Multipass is installed
+if ! command -v multipass &> /dev/null; then
+    echo "Error: Multipass is not installed"
+    echo ""
+    echo "Install it with:"
+    echo "  macOS:   brew install multipass"
+    echo "  Linux:   sudo snap install multipass"
+    echo "  Windows: Download from https://multipass.run"
+    echo ""
     exit 1
 fi
 
-# Check if Docker is running
-if ! docker ps &> /dev/null; then
-    echo "Error: Docker is not running or you don't have permission"
+# Check Multipass is running
+if ! multipass list &> /dev/null; then
+    echo "Error: Multipass daemon is not running"
+    echo "Try: multipass start (or restart Multipass.app on macOS)"
     exit 1
 fi
 
-cd "$PROJECT_ROOT"
+echo "==> Creating Ubuntu 24.04 VM..."
+echo "    Name: $VM_NAME"
+echo "    CPUs: $VM_CPUS"
+echo "    Memory: $VM_MEMORY"
+echo "    Disk: $VM_DISK"
+
+# Create VM with multiple CPUs for faster compilation
+if ! multipass launch 24.04 \
+    --name "$VM_NAME" \
+    --cpus "$VM_CPUS" \
+    --memory "$VM_MEMORY" \
+    --disk "$VM_DISK" \
+    --timeout 300; then
+    echo "Error: Failed to create VM"
+    exit 1
+fi
+echo "✓ VM created"
+
+# Cleanup function
+cleanup() {
+    echo ""
+    echo "==> Cleaning up VM..."
+    multipass delete "$VM_NAME" --purge 2>/dev/null || true
+}
+
+# Register cleanup on exit
+trap cleanup EXIT
+echo ""
+
+# Wait for VM to be ready
+echo "==> Waiting for VM to be ready..."
+multipass exec "$VM_NAME" -- cloud-init status --wait
+echo "✓ VM ready"
+echo ""
+
+# Transfer project files
+echo "==> Transferring project files..."
+multipass transfer -r "$PROJECT_ROOT" "$VM_NAME:/home/ubuntu/ottershipper"
+echo "✓ Files transferred"
+echo ""
+
+# Run tests inside VM
+echo "==> Running tests in VM..."
+echo ""
+
+multipass exec "$VM_NAME" -- bash -s << 'EOF'
+set -e
+
+cd /home/ubuntu/ottershipper
+
+echo "==> Inside VM (Ubuntu 24.04)"
+echo ""
+
+# Install prerequisites
+echo "==> Installing prerequisites..."
+sudo apt-get update -qq > /dev/null
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+    curl \
+    build-essential \
+    docker.io \
+    > /dev/null
+echo "✓ Prerequisites installed"
+echo ""
+
+# Start Docker
+echo "==> Starting Docker..."
+sudo systemctl start docker
+sudo usermod -aG docker ubuntu
+echo "✓ Docker started"
+echo ""
+
+# Install Rust
+echo "==> Installing Rust toolchain..."
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+source "$HOME/.cargo/env"
+echo "✓ Rust installed: $(rustc --version)"
+echo ""
 
 # Run clippy
 echo "==> Running clippy..."
@@ -44,66 +136,21 @@ fi
 echo "✓ Formatting check passed"
 echo ""
 
-# Build for Linux
-echo "==> Building binary for Linux x86_64..."
-cross build --release --target x86_64-unknown-linux-musl
-
-if [ ! -f "target/x86_64-unknown-linux-musl/release/ottershipper" ]; then
+# Build binary
+echo "==> Building binary..."
+cargo build --release
+if [ ! -f "target/release/ottershipper" ]; then
     echo "Error: Binary build failed"
     exit 1
 fi
-
 echo "✓ Binary built successfully"
-BINARY_SIZE=$(ls -lh target/x86_64-unknown-linux-musl/release/ottershipper | awk '{print $5}')
+BINARY_SIZE=$(ls -lh target/release/ottershipper | awk '{print $5}')
 echo "  Size: $BINARY_SIZE"
 echo ""
 
-# Create test artifacts directory
-TEST_DIR="$PROJECT_ROOT/test-artifacts"
-rm -rf "$TEST_DIR"
-mkdir -p "$TEST_DIR"
-
-# Copy binary and installation script
-echo "==> Preparing test artifacts..."
-cp target/x86_64-unknown-linux-musl/release/ottershipper "$TEST_DIR/"
-cp install/install.sh "$TEST_DIR/"
-echo "✓ Artifacts prepared"
-echo ""
-
-# Test in Docker
-echo "==> Starting Ubuntu 24.04 container..."
-CONTAINER_NAME="ottershipper-test-$$"
-
-# Run installation in Docker
-docker run --name "$CONTAINER_NAME" --rm -i \
-    -v "$TEST_DIR:/test-artifacts:ro" \
-    -v /var/run/docker.sock:/var/run/docker.sock \
-    --privileged \
-    ubuntu:24.04 \
-    /bin/bash -s << 'EOF'
-
-set -e
-
-echo "==> Inside Docker container"
-echo ""
-
-# Update package lists
-echo "==> Installing prerequisites..."
-apt-get update -qq
-apt-get install -y -qq curl docker.io systemctl
-
-echo "✓ Prerequisites installed"
-echo ""
-
-# Copy artifacts to writable location
-cp -r /test-artifacts /tmp/artifacts
-cd /tmp/artifacts
-chmod +x install.sh
-chmod +x ottershipper
-
-# Test binary directly first
+# Test binary execution
 echo "==> Testing binary execution..."
-if ./ottershipper --version 2>&1 | head -n 1; then
+if ./target/release/ottershipper --version 2>&1 | head -n 1; then
     echo "✓ Binary executes successfully"
 else
     echo "⚠️  Binary test (expected to fail without full setup)"
@@ -111,8 +158,9 @@ fi
 echo ""
 
 # Run installation with local binary
-echo "==> Running installation with local binary..."
-./install.sh --local-binary /tmp/artifacts/ottershipper
+echo "==> Running installation..."
+chmod +x install/install.sh
+sudo ./install/install.sh --local-binary target/release/ottershipper
 
 echo ""
 echo "==> Verifying installation..."
@@ -136,8 +184,6 @@ fi
 # Check if config was created
 if [ -f /etc/ottershipper/config.toml ]; then
     echo "✓ Configuration created"
-    echo "  Config content:"
-    cat /etc/ottershipper/config.toml | sed 's/^/    /'
 else
     echo "✗ Configuration not found"
     exit 1
@@ -159,19 +205,21 @@ else
     exit 1
 fi
 
-# Check service status (may not be running due to Docker limitations)
+# Check service status
 echo ""
 echo "==> Checking service status..."
-if systemctl is-enabled ottershipper &> /dev/null; then
+if sudo systemctl is-enabled ottershipper &> /dev/null; then
     echo "✓ Service enabled"
 else
-    echo "⚠️  Service not enabled (may be expected in Docker)"
+    echo "⚠️  Service not enabled"
 fi
 
-if systemctl is-active ottershipper &> /dev/null; then
+if sudo systemctl is-active ottershipper &> /dev/null; then
     echo "✓ Service is running"
 else
-    echo "⚠️  Service not running (expected in Docker without proper init)"
+    echo "⚠️  Service not running"
+    echo "    Checking logs..."
+    sudo journalctl -u ottershipper --no-pager -n 10
 fi
 
 echo ""
@@ -181,19 +229,37 @@ EOF
 
 EXIT_CODE=$?
 
-# Cleanup
-rm -rf "$TEST_DIR"
+# Calculate elapsed time
+END_TIME=$(date +%s)
+ELAPSED=$((END_TIME - START_TIME))
+MINUTES=$((ELAPSED / 60))
+SECONDS=$((ELAPSED % 60))
 
 if [ $EXIT_CODE -eq 0 ]; then
     echo ""
     echo "==> All tests passed! ✓"
     echo ""
-    echo "The binary and installation script work correctly."
+    echo "Clippy, formatting, build, and installation all work correctly."
     echo "You can safely commit and push your changes."
+    echo ""
+    printf "Total time: %dm %ds\n" $MINUTES $SECONDS
+    echo ""
+    echo "Note: VM cleaned up automatically."
+    echo "      Each run uses a fresh VM for true integration testing."
+    echo ""
 else
     echo ""
     echo "==> Tests failed! ✗"
     echo ""
     echo "Please review the errors above."
+    echo ""
+    printf "Failed after: %dm %ds\n" $MINUTES $SECONDS
+    echo ""
+    echo "VM kept for debugging: $VM_NAME"
+    echo "  Shell into VM: multipass shell $VM_NAME"
+    echo "  Delete VM:     multipass delete $VM_NAME --purge"
+    echo ""
+    # Don't auto-cleanup on failure so you can debug
+    trap - EXIT
     exit 1
 fi
